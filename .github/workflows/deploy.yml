@@ -4,6 +4,8 @@ on:
   push:
     branches: [ main ]
   pull_request:
+  repository_dispatch:
+    types: [deployment_success]
 
 env:
   applicationfolder: spring-boot-hello-world-example
@@ -66,25 +68,9 @@ jobs:
           deployment_info=$(aws deploy create-deployment --application-name CodeDeployAppNameWithASG --deployment-group-name CodeDeployGroupName --github-location repository=$GITHUB_REPOSITORY,commitId=$commit_hash --ignore-application-stop-failures)
           echo "$deployment_info" | jq -r '.deploymentId' > deployment_id.txt
 
-      # Polling loop to check deployment status
-      - name: Wait for Deployment
-        id: wait-for-deployment
+      # Handle deployment success event from CodeDeploy
+      - name: Handle Deployment Success
+        if: github.event_name == 'repository_dispatch' && github.event.action == 'deployment_success'
         run: |
-          status="IN_PROGRESS"
-          while [ "$status" == "IN_PROGRESS" ]; do
-            sleep 30
-            deployment_id=$(cat deployment_id.txt)
-            status=$(aws deploy get-deployment --deployment-id $deployment_id --query 'deploymentInfo.status' --output text)
-          done
-
-      - name: Get Deployment Status and Failure Reason
-        run: |
-          deployment_id=$(cat deployment_id.txt)
-          deployment_status=$(aws deploy get-deployment --deployment-id $deployment_id --query 'deploymentInfo.status' --output text)
-          if [ "$deployment_status" == "Succeeded" ]; then
-            echo "Deployment succeeded."
-          else
-            echo "Deployment failed."
-            failure_reason=$(aws deploy get-deployment --deployment-id $deployment_id --query 'deploymentInfo.errorInformation' --output text)
-            echo "Failure reason: $failure_reason"
-          fi
+          echo "Deployment successful."
+          # Add any additional actions you want to perform upon deployment success
