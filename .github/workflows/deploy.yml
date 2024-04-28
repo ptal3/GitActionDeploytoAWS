@@ -1,7 +1,6 @@
 name: Build and Deploy
 
 on:
-  #workflow_dispatch: {}
   push:
     branches: [ main ]
   pull_request:
@@ -10,7 +9,6 @@ env:
   applicationfolder: spring-boot-hello-world-example
   AWS_REGION: ap-southeast-2
   S3BUCKET: codedeploystack-webappdeploymentbucket-joijcg6g6p1t
-
 
 jobs:
   build:
@@ -44,8 +42,8 @@ jobs:
 
       - name: Upload Artifact to s3
         working-directory: ${{ env.applicationfolder }}/target
-        run: aws s3 cp *.war s3://${{ env.S3BUCKET }}/
-        
+        run: aws s3 cp *.war s3://${{ env.S3BUCKET }}
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -54,13 +52,36 @@ jobs:
       id-token: write
       contents: read
     steps:
-    - uses: actions/checkout@v2
-    - uses: aws-actions/configure-aws-credentials@v1
-      with:
-        role-to-assume: ${{ secrets.IAMROLE_GITHUB }}
-        role-session-name: GitHub-Action-Role
-        aws-region: ${{ env.AWS_REGION }}
-    - run: |
-        echo "Deploying branch ${{ env.GITHUB_REF }} to ${{ github.event.inputs.environment }}"
-        commit_hash=`git rev-parse HEAD`
-        aws deploy create-deployment --application-name CodeDeployAppNameWithASG --deployment-group-name CodeDeployGroupName --github-location repository=$GITHUB_REPOSITORY,commitId=$commit_hash --ignore-application-stop-failures
+      - uses: actions/checkout@v2
+
+      - uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ secrets.IAMROLE_GITHUB }}
+          role-session-name: GitHub-Action-Role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - run: |
+          echo "Deploying branch ${{ env.GITHUB_REF }} to ${{ github.event.inputs.environment }}"
+          commit_hash=`git rev-parse HEAD`
+          deployment_info=$(aws deploy create-deployment --application-name CodeDeployAppNameWithASG --deployment-group-name CodeDeployGroupName --github-location repository=$GITHUB_REPOSITORY,commitId=$commit_hash --ignore-application-stop-failures)
+
+      # Polling loop to check deployment status
+      - name: Wait for Deployment
+        id: wait-for-deployment
+        run: |
+          status="IN_PROGRESS"
+          while [ "$status" == "IN_PROGRESS" ]; do
+            sleep 30
+            status=$(aws deploy get-deployment --deployment-id $deployment_id --query 'deploymentInfo.status' --output text)
+          done
+
+      - name: Get Deployment Status and Failure Reason
+        run: |
+          deployment_status=$(aws deploy get-deployment --deployment-id $deployment_id --query 'deploymentInfo.status' --output text)
+          if [ "$deployment_status" == "SUCCEEDED" ]; then
+            echo "Deployment succeeded."
+          else
+            echo "Deployment failed."
+            failure_reason=$(aws deploy get-deployment --deployment-id $deployment_id --query 'deploymentInfo.errorInformation' --output text)
+            echo "Failure reason: $failure_reason"
+          fi
