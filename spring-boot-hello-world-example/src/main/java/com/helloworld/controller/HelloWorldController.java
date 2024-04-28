@@ -7,6 +7,6 @@ public class HelloWorldController
 @RequestMapping("/")
 public String hello() 
 {
-return "<h1> Going for a push model!!! </h1>";
+return "<h1> Switching back to polling!!! </h1>";
 }
 }
