@@ -7,6 +7,6 @@ public class HelloWorldController
 @RequestMapping("/")
 public String hello() 
 {
-return "<h1> Happy feedback loop from CodeDeploy to GitHub actions!!! </h1>";
+return "<h1> Bug fix!!! </h1>";
 }
 }
