@@ -7,6 +7,6 @@ public class HelloWorldController
 @RequestMapping("/")
 public String hello() 
 {
-return "<h1> Finally feedback loop working!!! </h1>";
+return "<h1> Case insensitive comparision introduced!!! </h1>";
 }
 }
