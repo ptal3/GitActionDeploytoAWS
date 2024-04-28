@@ -79,6 +79,7 @@ jobs:
 
       - name: Get Deployment Status and Failure Reason
         run: |
+          deployment_id=$(cat deployment_id.txt)
           deployment_status=$(aws deploy get-deployment --deployment-id $deployment_id --query 'deploymentInfo.status' --output text)
           if [ "$deployment_status" == "SUCCEEDED" ]; then
             echo "Deployment succeeded."
